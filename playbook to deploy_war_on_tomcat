@@ -1,0 +1,28 @@
+---
+#playbook to deploy_war_on_tomcat
+
+- hosts: devlinux, qalinux
+  user: velocity
+  connection: ssh
+  become: yes
+  gather_facts: yes
+
+
+  tasks:
+    - name: install java-11
+      action: yum pkg=java-11-amazon-corretto.x86_64 state=present
+
+    - name: dowmload tomcat
+      action: get_url url=https://dlcdn.apache.org/tomcat/tomcat-9/v9.0.91/bin/apache-tomcat-9.0.91.zip dest=/mnt
+
+    - name: unzip
+      action: unarchive src=/mnt/apache-tomcat-9.0.91.zip dest=/mnt remote_src=yes
+
+    - name: deploy war file
+      action: copy src=/home/velocity/project/target/LoginWebApp.war dest=/mnt/apache-tomcat-9.0.91/webapps
+
+    - name: Set permissions recursively on Apache Tomcat directory
+      command: chmod -R 777 /mnt/apache-tomcat-9.0.91
+
+    - name: Start Tomcat
+      action: shell nohup /mnt/apache-tomcat-9.0.91/bin/startup.sh
