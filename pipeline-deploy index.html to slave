@@ -1,0 +1,21 @@
+pipeline{
+  agent {
+     label{
+        label "slave-1"
+     }  
+  }
+  stages{
+     stage("stage-1"){
+        steps{
+           sh """
+          
+           sudo yum install httpd -y
+           sudo service httpd start
+           echo "welcome...!!!" > /tmp/index.html
+           sudo mv /tmp/index.html /var/www/html/index.html
+           sudo chmod -R 777 /var/www/html/index.html
+           """
+        }
+     }
+  }
+}
