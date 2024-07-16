@@ -1,0 +1,168 @@
+pipeline{
+    
+    agent{
+        label{ 
+        label "built-in"
+            
+        }
+    }
+    stages{
+        stage("parallel-stages"){
+            parallel{
+                stage("stage-1-clone github repository"){
+                    steps{
+                    sh "rm -rf *"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q1 "
+                    sh "mv Repository-1 Repository-1-2024Q1"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q2 "
+                    sh "mv Repository-1 Repository-1-2024Q2"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q3"
+                    sh "mv Repository-1 Repository-1-2024Q3"
+                    
+                    }
+                }
+                stage("stage-2-create-docker-container"){
+                steps{
+                    sh "yum install docker -y"
+                    sh "systemctl start docker"
+                    sh "docker kill test || true"
+                    sh "docker system prune -a -f"
+                    sh "docker run -dp 80:80 --name test httpd"
+                    sh "docker kill test2 || true"
+                    sh "docker system prune -a -f"
+                    sh "docker run -dp 90:80 --name test2 httpd"
+                    sh "docker kill test3 || true"
+                    sh "docker system prune -a -f"
+                    sh "docker run -dp 70:80 --name test3 httpd"
+                    
+                }
+                }
+            }
+        }    
+        stage("stage-3-copy-index.html"){
+                steps{
+                    sh "docker cp Repository-1-2024Q1/index.html  test:usr/local/apache2/htdocs"
+                    sh "docker exec test chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "docker exec test chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test chown apache:apache /usr/local/apache2/htdocs/index.html"
+                    
+                    sh "docker cp Repository-1-2024Q2/index.html  test2:usr/local/apache2/htdocs"
+                    sh "docker exec test chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "docker exec test chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test chown apache:apache /usr/local/apache2/htdocs/index.html"
+                    
+                    sh "docker cp Repository-1-2024Q3/index.html  test3:usr/local/apache2/htdocs"
+                    sh "docker exec test chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "docker exec test chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test chown apache:apache /usr/local/apache2/htdocs/index.html"
+                }
+            }
+            
+        
+    }
+}
+
+errors got during this:
+1) The error messages indicate that the Docker daemon is not running and that the Docker CLI version is incompatible with the daemon API version.
+
+Here are the steps to address these issues:
+
+Ensure Docker Daemon is Running:
+
+Before running Docker commands, ensure the Docker daemon is started.
+Check Docker Version Compatibility:
+
+Ensure the Docker CLI and daemon versions are compatible. If the installed Docker version is outdated, update it to a compatible version.
+
+Key Additions:
+Start Docker Daemon:
+
+systemctl start docker: Starts the Docker daemon.
+systemctl enable docker: Ensures Docker starts on boot.
+Check Docker Version:
+
+docker --version: Prints the installed Docker version to help verify compatibility.
+Error Handling for Docker Prune:
+
+Added || true to docker system prune -a -f to prevent script failure if the command is incompatible with the installed Docker version.
+
+2)The error message lstat /root/Repository-1: no such file or directory indicates that the path to the cloned repository is incorrect. This likely means the working directory has changed or the path is not correctly set.
+
+To address this issue, we'll make sure the repository is cloned into the workspace directory and use relative paths to ensure consistency. Jenkins workspace is the correct place to clone and access the repository files.
+
+3)Forbidden
+You don't have permission to access this resource........why i'm unable to access index.html from browser
+ChatGPT
+The "Forbidden" error typically indicates a permissions issue with the file or directory being served by the web server. In the context of the Apache HTTP server (httpd) running in a Docker container, this often means that the index.html file or the directory it resides in does not have the correct permissions.
+
+To resolve this, you can set the correct permissions and ownership for the index.html file within the container. Here’s how you can modify the pipeline to ensure that the permissions are set correctly after copying the file into the Docker container:
+
+chmod 644 /usr/local/apache2/htdocs/index.html: Sets the correct permissions for the index.html file to be readable by all users.
+Setting Ownership:
+
+chown www-data:www-data /usr/local/apache2/htdocs/index.html: Changes the owner and group of the index.html file to www-data, which is the default user for Apache in some distributions.
+chown apache:apache /usr/local/apache2/htdocs/index.html: Alternative command for distributions where the Apache user is apache.
+Additional Considerations:
+User and Group: Ensure that the user and group used in the chown command match the ones used by your Apache server in the Docker container. The user might be www-data or apache, depending on the base image of your Docker container.
+By setting the correct permissions and ownership, you should be able to access the index.html file from the browser without encountering the "Forbidden" error.
+
+
+On slave
+
+pipeline{
+    
+    agent{
+        label{ 
+        label "slave-1"
+            
+        }
+    }
+    stages{
+        stage("parallel-stages"){
+            parallel{
+                stage("stage-1-clone github repository"){
+                    steps{
+                    sh "rm -rf *"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q1 "
+                    sh "mv Repository-1 Repository-1-2024Q1"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q2 "
+                    sh "mv Repository-1 Repository-1-2024Q2"
+                    sh "git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q3"
+                    sh "mv Repository-1 Repository-1-2024Q3"
+                    
+                    }
+                }
+                stage("stage-2-create-docker-container"){
+                steps{
+                    sh "sudo yum install docker -y"
+                    sh "sudo systemctl start docker"
+                    sh "sudo docker kill test || true"
+                    sh "sudo docker system prune -a -f"
+                    sh "sudo docker run -dp 80:80 --name test httpd"
+                    sh "sudo docker kill test2 || true"
+                    sh "sudo docker system prune -a -f"
+                    sh "sudo docker run -dp 90:80 --name test2 httpd"
+                    sh "sudo docker kill test3 || true"
+                    sh "sudo docker system prune -a -f"
+                    sh "sudo docker run -dp 8080:80 --name test3 httpd"
+                    
+                }
+                }
+            }
+        }    
+        stage("stage-3-copy-index.html"){
+                steps{
+                    sh "sudo docker cp Repository-1-2024Q1/index.html  test:usr/local/apache2/htdocs"
+                    sh "sudo docker exec test chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "sudo docker exec test chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test chown apache:apache /usr/local/apache2/htdocs/index.html"
+                    
+                    sh "sudo docker cp Repository-1-2024Q2/index.html  test2:usr/local/apache2/htdocs"
+                    sh "sudo docker exec test2 chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "sudo docker exec test2 chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test2 chown apache:apache /usr/local/apache2/htdocs/index.html"
+                    
+                    sh "sudo docker cp Repository-1-2024Q3/index.html  test3:usr/local/apache2/htdocs"
+                    sh "sudo docker exec test3 chmod 644 /usr/local/apache2/htdocs/index.html"
+                    sh "sudo docker exec test3 chown www-data:www-data /usr/local/apache2/htdocs/index.html || docker exec test3 chown apache:apache /usr/local/apache2/htdocs/index.html"
+                }
+            }
+            
+        
+    }
+}
