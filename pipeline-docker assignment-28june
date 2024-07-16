@@ -1,0 +1,68 @@
+pipeline{
+    agent {
+        label{
+            label "slave-1"
+        }
+    }
+    stages{
+        stage("stage-1 clone github repository"){
+            steps{
+                sh """
+                rm -rf *
+                git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q1
+                mv Repository-1 Repository-1-2024Q1
+                git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q2
+                mv Repository-1 Repository-1-2024Q2
+                git clone https://github.com/vaishnavi1-14/Repository-1.git -b 2024Q3
+                mv Repository-1 Repository-1-2024Q3
+                """
+            }
+        }
+        stage("stage-2 installation of docker"){
+            steps{
+                sh """
+                sudo yum install docker -y
+                sudo systemctl start docker
+                """
+            }
+        }
+        stage("stage-3 create docker volume"){
+            steps{
+                sh """
+                sudo docker volume rm volume-1 || true
+                sudo docker volume create volume-1
+                sudo cp Repository-1-2024Q1/index.html /var/lib/docker/volumes/volume-1/_data
+                sudo docker volume rm volume-2 || true
+                sudo docker volume create volume-2
+                sudo cp Repository-1-2024Q2/index.html /var/lib/docker/volumes/volume-2/_data
+                sudo docker volume rm volume-3 || true
+                sudo docker volume create volume-3
+                sudo cp Repository-1-2024Q3/index.html /var/lib/docker/volumes/volume-3/_data
+                """
+            }
+        }
+        stage("stage-4 create containers and mount volumes"){
+            steps{
+                sh """
+                sudo docker kill server-1 || true
+                sudo docker system prune -a -f
+                sudo docker run -dv volume-1:/usr/local/apache2/htdocs -p 80:80 --name server-1 httpd
+                sudo docker kill server-2 || true
+                sudo docker system prune -a -f 
+                sudo docker run -dv volume-2:/usr/local/apache2/htdocs -p 90:80 --name server-2 httpd
+                sudo docker kill server-3 || true
+                sudo docker system prune -a -f 
+                sudo docker run -dv volume-3:/usr/local/apache2/htdocs -p 8080:80 --name server-3 httpd
+                """
+            }
+        }
+    }
+}
+
+errors
+
+Port Conflicts: Ensure that each container binds to a unique host port to avoid conflicts.
+
+cp Repository-1-2024Q1/index.html /var/lib/docker/volumes/volume-1/_data
+cp: failed to access ‘/var/lib/docker/volumes/volume-1/_data’: Permission denied
+The error message indicates that the script is trying to access a directory that requires elevated permissions. used-sudo to resolve.
